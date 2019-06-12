@@ -1,0 +1,82 @@
+---
+title: "Análisis y Curación, clase 3"
+author: "Ferraro, María Eugenia"
+date: "18 de Mayo, 2019, Cohorte Omega"
+output: beamer_presentation
+ 
+  
+---
+
+
+***
+## Ejercicios:
+
+Visualizacion es una herramienta muy importante para la generacion de intuicion, pero
+raramente uno tiene los datos en la forma necesaria. Frecuentemente se necesitara 
+crear nuevas variables o simplemente reordenarlas.
+
+Exploraremos ahora la manipulacion basica utilizando un conjunto de datos sobre los
+vuelos en Nueva York en 2013.
+
+```{r echo=TRUE}
+library(nycflights13)
+fligths<-nycflights13::flights
+fligths
+```
+
+***
+## Practico 1: Entregar un Rmd donde se encuentren todos los vuelos que:
+
+- Que arribaron con un retraso de mas de dos horas.
+- Volaron hacia Houston (IAH o HOU)
+- Fueron operados por United, American o Delta.
+- Salieron en Verano (Julio, Agosto y Septiembre)
+- Arrivaron mas de dos horas tarde, pero salieron bien.
+- Salieron entre medianoche y las 6 am.
+
+
+***
+
+```{r echo=TRUE}
+#- Que arribaron con un retraso de mas de dos horas.
+subset(fligths, fligths["arr_delay"]>120)
+
+```
+```{r echo=TRUE}
+# Volaron hacia Houston (IAH o HOU)
+subset(fligths, fligths["dest"]=='IAH' | fligths["dest"]=='HOU')
+```
+***
+
+```{r echo=TRUE}
+#Fueron operados por United, American o Delta.
+unique(fligths$carrier)
+subset(fligths, fligths["carrier"]=='UA' | fligths["carrier"]=='AA'| fligths["carrier"]=='DL')
+```
+***
+
+```{r echo=TRUE}
+#- Salieron en Verano (Julio, Agosto y Septiembre)
+
+subset(fligths, fligths["month"]==7 | fligths["month"]==8 |fligths["month"]==9)
+
+```
+***
+
+
+```{r echo=TRUE}
+#- Arrivaron mas de dos horas tarde, pero salieron bien.
+
+subset(fligths, fligths["dep_delay"]<=0 & fligths["arr_delay"]>120)
+
+```
+***
+```{r echo=TRUE}
+#- Salieron entre medianoche y las 6 am.
+unique(fligths$hour)
+new<-subset(fligths, fligths["hour"]>0 & fligths["hour"]<=6, keep = c(flights["hour"]))
+new_df <- subset(new, keep = c("flights.hour"))
+new_df
+```
+***
+

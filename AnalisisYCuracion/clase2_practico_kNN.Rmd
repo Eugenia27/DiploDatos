@@ -1,0 +1,170 @@
+---
+Autores:  Nair Trógolo y María Eugenia Ferraro 
+title:   "clase2_practico - CLASIFICACIÓN DE TUMOR MEDIANTE MÉTODO DE k VECINOS|"
+output:   html_document
+---
+
+```{r echo=TRUE}
+library(class)
+library(gmodels)
+
+
+knitr::opts_chunk$set(echo = TRUE)
+
+# DEFINICION DE FUNCIONES
+normalizeZScore <- function(x) {return ((x-mean(x))/sd(x))}
+normalizeMinMax <- function(x) {return ((x-min(x))/(max(x)-min(x)))}
+
+# CARGA DE DATOS
+data <- read.csv("http://archive.ics.uci.edu/ml/machine-learning-databases/breast-cancer-wisconsin/wdbc.data",header=FALSE)
+
+# ELIMINACION DE COLUMNA DE ID - PASO OBLIGATORIO PARA HACER ML
+data <- data[-1]
+cat('DIMENSION DE LA TABLA: ',dim(data),'\n\n')
+
+# 1- Mejore el rendimiento utilizando una normalizacion con z-scores provista por la funcion scale() de R.
+
+
+# NORMALIZACION DE VARIABLES PARA QUE TODAS OPEREN DENTRO DEL MISMO RANGO
+## NORMALIZACION Z-SCORES
+data_nZS <- as.data.frame(lapply(data[2:31], normalizeZScore))
+## NORMALIZACION MIN-MAX
+data_nMM <- as.data.frame(lapply(data[2:31], normalizeMinMax))
+
+# VISUALIZACION DE NORMALIZACIONES SOBRE LA VARIABLE DE LA COLUMNA V8
+cat("NORMALIZACION Z-SCORE\n")
+summary(data_nZS$V8)
+cat("\nNORMALIZACION MIN-MAX\n")
+summary(data_nMM$V8)
+cat("\nNORMALIZACION Z-SCORE CON SCALE\n")
+summary(scale(data$V8))
+
+```
+
+
+```{r echo=TRUE}
+# DEFINICION, POCO EFICIENTE, DE LOS CONJUNTOS PARA LLEVAR A CABO LA CLASIFICACION
+entrenamientoZS <- data_nZS[1:469, ]
+validacionZS    <- data_nZS[470:569, ]
+
+entrenamientoMM <- data_nMM[1:469, ]
+validacionMM    <- data_nMM[470:569, ] 
+
+
+# VARIABLE CATEGORICA A CLASIFICAR
+entrenamiento_labelsZS <- data[1:469, 1]
+validacion_labelsZS    <- data[470:569, 1]
+
+entrenamiento_labelsMM <- data[1:469, 1]
+validacion_labelsMM    <- data[470:569, 1]
+
+```
+
+
+```{r echo=TRUE}
+
+# Evaluando la performance del modelo.
+## 2- Pruebe algunos valores alternativos de k=1, 5,  11, 15, 21 y seleccione el mejor valor de k.
+
+
+for(i in c(1,5,11,15,21))
+{
+  cat('\n\n******************************************************************************\n')
+  prediccionZS <- knn(train=entrenamientoZS, test=validacionZS, cl=entrenamiento_labelsZS, k=i)
+  ctZS         <- CrossTable(x=validacion_labelsZS, y=prediccionZS, prop.chisq = FALSE)
+
+  prediccionMM <- knn(train=entrenamientoMM, test=validacionMM, cl=entrenamiento_labelsMM, k=i)
+  ctMM         <- CrossTable(x=validacion_labelsMM, y=prediccionMM, prop.chisq = FALSE)  
+  
+  cat('NUMERO DE VECINOS k=',i,'\n\nZSCORE\n------M pero Sano: ',c(ctZS$t['M','B'] ,'\n------B pero Enfermo: ',ctZS$t['B','M']),'\nMIN-MAX\n------M pero Sano: ',c(ctMM$t['M','B'] ,'\n------B pero Enfermo: ',ctMM$t['B','M']))
+}
+
+```
+
+
+```{r echo=TRUE}
+
+# Mientras termina su merecido cafe verifique si el resultado
+# cambia utilizando paciente elegidos aleatoriamente para el conjunto de validacion
+
+# SETEO SEMILLA
+set.seed(13)
+
+# DEFINO EL CONJUNTO DE ENTRENAMIENT
+
+entrenamiento        <- data_nZS[1:469, ]
+entrenamiento_labels <- data[1:469, 1]
+
+inicio = 6
+
+for(i in inicio:200)
+{
+    nvalidacion          <- i 
+    validacion           <- data[sample(1:nrow(data), nvalidacion), ]
+    validacion_labels    <- validacion[1:nvalidacion,1]
+    validacion           <- validacion[-1]
+    validacion           <- as.data.frame(lapply(validacion, normalizeZScore))
+    prediccion           <- knn(train=entrenamiento, test=validacion, cl=entrenamiento_labels, k=21)
+    ct                   <- CrossTable(x=validacion_labels, y=prediccion, prop.chisq = FALSE)
+  if(i==inicio) error1 <- c(ct$t['M','B'] ,ct$t['B','M'], nvalidacion)
+  else if(i==inicio+1)
+  {
+    error2 <- c(ct$t['M','B'] ,ct$t['B','M'], nvalidacion)
+    matrizError <- data.frame(error1,error2)
+  }
+  else
+  {
+    error <- c(ct$t['M','B'] ,ct$t['B','M'], nvalidacion)
+    matrizError <- cbind(matrizError,error)
+    colnames(matrizError)[colnames(matrizError)=="error"] <- paste("error",toString(i-inicio+1), sep = "")  
+  }
+}
+
+matrizError
+
+```
+```{r}
+x           <- as.numeric(matrizError[3,])
+MSanos      <- as.numeric(matrizError[1,])
+BEnfermos   <- as.numeric(matrizError[2,])
+```
+
+
+```{r}
+require(stats)
+regMSanos<-lm(MSanos ~ x)
+regBEnfermos<-lm(BEnfermos ~ x)
+```
+
+
+
+```{r echo=TRUE}
+#attach(mtcars)
+library(Hmisc) 
+
+par(oma=c(0,0,0,0))
+par(mar=c(4,4.5,1.5,1))
+par(family="helvetica")
+par(cex.lab=1.2)
+par(cex.axis=1.0)
+par(mgp=c(2.5,0.9,0))
+
+
+sanos    <- "gray48"
+enfermos <- "gray24"
+regsanos <- "chartreuse3" 
+regenfer <- "firebrick3"
+
+plot(x,MSanos,col=alpha(sanos,0.7),pch=1,lwd=2.,xlab='Dim Cto. de Validación',ylab='N Casos de Error')
+points(x,BEnfermos,col=alpha(enfermos,0.8),pch=16,lwd=2.)
+abline(regMSanos, col=alpha(regsanos,0.9),lwd=4,lty=6)
+abline(regBEnfermos, col=alpha(regenfer,0.9),lwd=4)
+legend(0,15.2,legend = c("Maligno-Sano","Benigno-Enfermo","Reg Maligno-Sano","Reg Benigno-Enfermo"), 
+       col = alpha(c(sanos, enfermos,regsanos,regenfer),0.7),pch = c(1,16,NA,NA),lty=c(NA,NA,6,1),lwd=c(2,2,4,4),bty="n")
+
+title(main="ERRORES EN PREDICCIÓN DE CÁNCER VS. DIMENSIÓN DEL CTO. DE VALIDACIÓN",cex.main=1.05,line=-0.9,outer=T,adj=0.5)
+
+```
+
+
+

@@ -1,0 +1,100 @@
+---
+title:  "calse2_GM"
+author: "Nair Trógolo, María Eugenia Ferraro"
+date:   "5/6/2019"
+output: html_document
+---
+
+En este práctico trabajamos con la base de datos de acceso público: AstDyS, que contiene los elementos orbitales propios para los asteroides del cinturón principal, se encuentran listados según las siguiente denominación:
+V1  = "ID"    : número de asteroide otorgado por Minor Planet Center
+V2  = "MAG"   : magnitud absoluta
+V3  = "a"     : semieje mayor de la órbita
+V4  = "e"     : excentricidad de la órbita
+V5  = "sin_i" : inclinación del plano orbital
+V6  = "n"     : movimiento medio
+V7  = "g"     : frecuencia del pericentro
+V8  = "s"     : frecuencia del nodo ascendente
+V9  = "lce"   : coeficiente de Lyapunov
+V10 = "my"    : no sabemos
+
+
+```{r echo=TRUE}}
+# CARGA DE DATOS
+data <- read.table("https://newton.spacedys.com//~astdys2/propsynth/all.syn",header=FALSE,skip =2)
+```
+
+```{r}
+dim(data)
+```
+
+
+```{r echo=TRUE}
+#RESUMEN DE DATASET
+summary(data)
+```
+```{r}
+# RENOMBRAMOS COLUMNAS
+colnames(data) <- c("ID","MAG","a","e","sin_i","n","g","s","lce","my")
+```
+
+```{r}
+# ELIMINAMOS COLUMNAS QUE NO SE UTILIZARÁN PARA EL ANÁLISIS
+data <- data[c(-1,-9,-10)]
+```
+
+```{r}
+# SELECCIONAMOS DATOS DENTRO DE UN RANGO DE SEMIEJE MAYOR
+subdata <-subset(data, a>2.1 & a<3.2)
+```
+
+
+```{r}
+# AL TENER UN DATASET DE DIMENSIÓN MUY GRANDE, TOMAMOS UNA MUESTRA ALEATORIA
+set.seed(123)
+index <- sample(1:nrow(subdata), 300)
+subdata_sample <- subdata[index,]
+```
+
+```{r}
+# Mclust comes with a method of hierarchical clustering. 
+library(mclust)
+# initialize 3 different classes.
+#initialk <- mclust::hc(data = iris, modelName = "EII")
+#initialk <- mclust::hclass(initialk, 3)
+```
+```{r}
+#install.packages("mclust")
+```
+```{r}
+# VARIABLES CON LAS QUE SE EJECUTARÁ EL MÉTODO EM
+subdata_sample[,1:4]
+```
+
+
+A continuación ejecutamos el método EM para distintos valores del metaparámetro k.
+Seleccionamos 4 variables continuas (semieje mayor -a-, excentricidad -e-, seno de la inclinacion -sin_i- y movimiento medio -n-) y buscamos tres grupos distintos.
+```{r echo=TRUE}
+k = c(2,3,4,5,6,8)
+k
+```
+
+
+```{r echo=TRUE}
+for(i in k)
+{
+  par(mfrow=c(1,2))
+  print(i)
+  initialk  <- mclust::hc(data = subdata_sample, modelName = "EII")
+  initialk  <- mclust::hclass(initialk, 2)
+  mcl.model <- Mclust(subdata_sample[,1:4], i)
+  # Plot de clustering
+  plot(mcl.model, what = "classification")
+}
+```
+
+
+
+
+
+
+
